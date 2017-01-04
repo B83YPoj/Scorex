@@ -3,7 +3,8 @@ package scorex.transaction.state.database.blockchain
 import scorex.crypto.encode.Base58
 import scorex.transaction.assets.exchange.{Order, OrderMatch}
 
-class OrderMatchStoredState(storage: StateStorageI with OrderMatchStorageI) {
+trait OrderMatchStoredState {
+  protected val storage: StateStorageI with OrderMatchStorageI
 
   val MaxLiveDays = (Order.MaxLiveTime / 24L * 60L * 60L * 1000L).toInt
 
