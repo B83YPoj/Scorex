@@ -9,12 +9,12 @@ import scorex.utils.LogMVMapBuilder
 import scala.collection.JavaConversions._
 
 
-class MVStoreStateStorage(val db: MVStore) extends StateStorageI with MVStoreOrderMatchStorage{
-
+trait MVStoreStateStorage extends StateStorageI {
+  val db: MVStore
 
   // ============= Account Changes
-  private val AccountChanges = "AccountChanges"
-  private val accountChanges: MVMap[String, Row] =
+  private lazy val AccountChanges = "AccountChanges"
+  private lazy val accountChanges: MVMap[String, Row] =
     db.openMap(AccountChanges, new LogMVMapBuilder[String, Row].valueType(RowDataType))
 
   private def acKey(address: Address, height: Int): String = height + "-" + address
@@ -27,8 +27,8 @@ class MVStoreStateStorage(val db: MVStore) extends StateStorageI with MVStoreOrd
 
 
   // ============= Last States
-  private val LastStates = "lastStates"
-  private val lastStates: MVMap[Address, Int] = db.openMap(LastStates, new LogMVMapBuilder[Address, Int])
+  private lazy val LastStates = "lastStates"
+  private lazy val lastStates: MVMap[Address, Int] = db.openMap(LastStates, new LogMVMapBuilder[Address, Int])
 
   def getLastStates(a: Address): Option[Int] = Option(lastStates.get(a))
 
@@ -38,8 +38,8 @@ class MVStoreStateStorage(val db: MVStore) extends StateStorageI with MVStoreOrd
 
 
   // ============= Last States
-  private val AccountAssets = "accountAssets"
-  private val accountAssetsMap: MVMap[String, Set[String]] = db.openMap(AccountAssets,
+  private lazy val AccountAssets = "accountAssets"
+  private lazy val accountAssetsMap: MVMap[String, Set[String]] = db.openMap(AccountAssets,
     new LogMVMapBuilder[String, Set[String]])
 
   def updateAccountAssets(address: Address, assetId: Option[AssetId]): Unit = {
@@ -55,17 +55,17 @@ class MVStoreStateStorage(val db: MVStore) extends StateStorageI with MVStoreOrd
 
 
   // ============= transactions
-  private val AllTxs = "IssueTxs"
-  private val IncludedTx = "includedTx"
+  private lazy val AllTxs = "IssueTxs"
+  private lazy val IncludedTx = "includedTx"
 
   /**
     * Transaction ID -> serialized transaction
     */
-  private val transactionsMap: MVMap[Array[Byte], Array[Byte]] = db.openMap(AllTxs, new LogMVMapBuilder[Array[Byte], Array[Byte]])
+  private lazy val transactionsMap: MVMap[Array[Byte], Array[Byte]] = db.openMap(AllTxs, new LogMVMapBuilder[Array[Byte], Array[Byte]])
   /**
     * Transaction ID -> Block height
     */
-  private val includedTx: MVMap[Array[Byte], Int] = db.openMap(IncludedTx, new LogMVMapBuilder[Array[Byte], Int])
+  private lazy val includedTx: MVMap[Array[Byte], Int] = db.openMap(IncludedTx, new LogMVMapBuilder[Array[Byte], Int])
 
   override def getTransactionBytes(id: Array[Byte]): Option[Array[Byte]] = Option(transactionsMap.get(id))
 
@@ -84,15 +84,11 @@ class MVStoreStateStorage(val db: MVStore) extends StateStorageI with MVStoreOrd
 
 
   // ============= state height
-  private val HeightKey = "height"
-  private val heightMap: MVMap[String, Int] = db.openMap(HeightKey, new LogMVMapBuilder[String, Int])
-  if (Option(heightMap.get(HeightKey)).isEmpty) heightMap.put(HeightKey, 0)
+  private lazy val HeightKey = "height"
+  private lazy val heightMap: MVMap[String, Int] = db.openMap(HeightKey, new LogMVMapBuilder[String, Int])
 
-  def stateHeight: Int = heightMap.get(HeightKey)
+  def stateHeight: Int = Option(heightMap.get(HeightKey)).getOrElse(0)
 
   def setStateHeight(height: Int): Unit = heightMap.put(HeightKey, height)
-
-
-  if (db.getStoreVersion > 0) db.rollback()
 
 }

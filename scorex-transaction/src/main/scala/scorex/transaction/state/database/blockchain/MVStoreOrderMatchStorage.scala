@@ -5,14 +5,14 @@ import org.h2.mvstore.{MVMap, MVStore}
 import scala.collection.JavaConversions._
 import scala.util.Try
 
-trait MVStoreOrderMatchStorage {
+trait MVStoreOrderMatchStorage extends OrderMatchStorageI {
   val db: MVStore
 
   // ============= Saved days
   val OrderMatchDays = "OrderMatchSavedDays"
   private lazy val savedDays: MVMap[Long, Boolean] = db.openMap(OrderMatchDays)
 
-  def putSavedDays(day: Long, b: Boolean): Unit = savedDays.put(day, b)
+  def putSavedDays(day: Long): Unit = savedDays.put(day, true)
 
   def containsSavedDays(day: Long): Boolean = Option(savedDays.get(day)).isDefined
 
