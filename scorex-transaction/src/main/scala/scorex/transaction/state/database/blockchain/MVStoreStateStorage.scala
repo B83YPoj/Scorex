@@ -9,7 +9,7 @@ import scorex.utils.LogMVMapBuilder
 import scala.collection.JavaConversions._
 
 
-class MVStoreStateStorage(val db: MVStore) extends StateStorageI {
+class MVStoreStateStorage(val db: MVStore) extends StateStorageI with MVStoreOrderMatchStorage{
 
 
   // ============= Account Changes

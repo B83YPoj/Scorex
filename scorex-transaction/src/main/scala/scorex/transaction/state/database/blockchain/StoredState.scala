@@ -422,7 +422,7 @@ class StoredState(minimalStorage: StateStorageI,
 object StoredState {
   def fromDB(db: MVStore, settings: WavesHardForkParameters): StoredState = {
     val min = new MVStoreStateStorage(db)
-    new StoredState(min, new AssetsExtendedState(db), new OrderMatchStoredState(db, min), settings)
+    new StoredState(min, new AssetsExtendedState(db), new OrderMatchStoredState(min), settings)
   }
 
 }
