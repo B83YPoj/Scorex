@@ -6,9 +6,10 @@ import scorex.transaction.assets.exchange.{Order, OrderMatch}
 
 import scala.collection.JavaConversions._
 
-trait OrderMatchStoredState {
-  val db: MVStore
-  val transactionsMap: MVMap[Array[Byte], Array[Byte]]
+class OrderMatchStoredState(db: MVStore, min: StateStorageI) {
+
+
+  protected def getTransactionBytes(id: Array[Byte]): Option[Array[Byte]] = ???
 
   val OrderMatchTx = "OrderMatchTx"
   val OrderMatchDays = "OrderMatchSavedDays"
@@ -21,7 +22,8 @@ trait OrderMatchStoredState {
   private def orderMatchTxByDay(orderTimestamp: Long): MVMap[String, Array[String]] =
     db.openMap(OrderMatchTx + orderTimestamp)
 
-  private val savedDays: MVMap[Long, Boolean] = db.openMap(OrderMatchDays)
+  //todo Move to MVStoreStateStorage
+  private lazy val savedDays: MVMap[Long, Boolean] = db.openMap(OrderMatchDays)
 
   def putOrderMatch(om: OrderMatch, blockTs: Long): Unit = {
     def isSaveNeeded(order: Order): Boolean = {
@@ -67,7 +69,7 @@ trait OrderMatchStoredState {
 
   private def parseTxSeq(a: Array[String]): Set[OrderMatch] = {
     a.toSet.flatMap { s: String => Base58.decode(s).toOption }.flatMap { id =>
-      OrderMatch.parseBytes(transactionsMap.get(id)).toOption
+      getTransactionBytes(id).flatMap(b => OrderMatch.parseBytes(b).toOption)
     }
   }
 

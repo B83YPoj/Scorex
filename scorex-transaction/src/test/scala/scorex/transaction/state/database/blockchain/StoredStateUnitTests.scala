@@ -45,7 +45,7 @@ class StoredStateUnitTests extends PropSpec with PropertyChecks with GeneratorDr
   new File(stateFile).delete()
 
   val db = new MVStore.Builder().fileName(stateFile).compress().open()
-  val state = new StoredState(db, forkParametersWithEnableUnissuedAssetsCheck)
+  val state = StoredState.fromDB(db, forkParametersWithEnableUnissuedAssetsCheck)
   val testAcc = new PrivateKeyAccount(scorex.utils.randomBytes(64))
   val testAssetAcc = AssetAcc(testAcc, None)
   val testAdd = testAcc.address
@@ -289,6 +289,7 @@ class StoredStateUnitTests extends PropSpec with PropertyChecks with GeneratorDr
       //issue asset
       val newBalances = state.calcNewBalances(Seq(issueTx), Map(), allowTemporaryNegative = true)
       state.applyChanges(newBalances)
+      println(state.accountTransactions(issueTx.sender).filter(_.isInstanceOf[IssueTransaction]))
       state.accountTransactions(issueTx.sender).count(_.isInstanceOf[IssueTransaction]) shouldBe 1
     }
   }
