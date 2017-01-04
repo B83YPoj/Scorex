@@ -8,9 +8,6 @@ import scala.collection.JavaConversions._
 
 class OrderMatchStoredState(db: MVStore, min: StateStorageI) {
 
-
-  protected def getTransactionBytes(id: Array[Byte]): Option[Array[Byte]] = ???
-
   val OrderMatchTx = "OrderMatchTx"
   val OrderMatchDays = "OrderMatchSavedDays"
   val OrderToCancelTxName = "OrderToCancelTx"
@@ -69,7 +66,7 @@ class OrderMatchStoredState(db: MVStore, min: StateStorageI) {
 
   private def parseTxSeq(a: Array[String]): Set[OrderMatch] = {
     a.toSet.flatMap { s: String => Base58.decode(s).toOption }.flatMap { id =>
-      getTransactionBytes(id).flatMap(b => OrderMatch.parseBytes(b).toOption)
+      min.getTransactionBytes(id).flatMap(b => OrderMatch.parseBytes(b).toOption)
     }
   }
 
