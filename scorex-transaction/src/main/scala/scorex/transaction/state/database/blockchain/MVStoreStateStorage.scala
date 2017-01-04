@@ -13,14 +13,17 @@ class MVStoreStateStorage(val db: MVStore) extends StateStorageI {
 
 
   // ============= Account Changes
-  private def accountChanges(key: Address): MVMap[Int, Row] = db.openMap(key.toString,
-    new LogMVMapBuilder[Int, Row].valueType(RowDataType))
+  private val AccountChanges = "AccountChanges"
+  private val accountChanges: MVMap[String, Row] =
+    db.openMap(AccountChanges, new LogMVMapBuilder[String, Row].valueType(RowDataType))
 
-  def getAccountChanges(key: Address, height: Int): Option[Row] = Option(accountChanges(key).get(height))
+  private def acKey(address: Address, height: Int): String = height + "-" + address
 
-  def putAccountChanges(key: Address, height: Int, data: Row): Unit = accountChanges(key).put(height, data)
+  def getAccountChanges(key: Address, height: Int): Option[Row] = Option(accountChanges.get(acKey(key, height)))
 
-  def removeAccountChanges(key: Address, height: Int): Row = accountChanges(key).remove(height)
+  def putAccountChanges(key: Address, height: Int, data: Row): Unit = accountChanges.put(acKey(key, height), data)
+
+  def removeAccountChanges(key: Address, height: Int): Row = accountChanges.remove(acKey(key, height))
 
 
   // ============= Last States

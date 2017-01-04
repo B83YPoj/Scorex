@@ -186,9 +186,10 @@ class StoredState(minimalStorage: StateStorageI,
         require(requiredHeight >= 0, s"Height should not be negative, $requiredHeight given")
 
         def loop(hh: Int, min: Long = Long.MaxValue): Long = {
-          //TODO .get ???
-          val row = minimalStorage.getAccountChanges(key, hh).get
-          require(Option(row).isDefined, s"accountChanges($key).get($hh) is null. lastStates.get(address)=$h")
+          //TODO optimization?
+          val rowOpt = minimalStorage.getAccountChanges(key, hh)
+          require(rowOpt.isDefined, s"accountChanges($key).get($hh) is null. lastStates.get(address)=$h")
+          val row = rowOpt.get
           if (hh <= requiredHeight) Math.min(row.state.balance, min)
           else if (row.lastRowHeight == 0) 0L
           else loop(row.lastRowHeight, Math.min(row.state.balance, min))
