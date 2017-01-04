@@ -7,7 +7,7 @@ trait StateStorageI {
 
   def putTransaction(tx: Transaction, height: Int): Unit
 
-  def removeTx(id: Array[Byte]): Unit
+  def removeTransaction(id: Array[Byte]): Unit
 
   def included(id: Array[Byte], heightOpt: Option[Int]): Option[Int]
 

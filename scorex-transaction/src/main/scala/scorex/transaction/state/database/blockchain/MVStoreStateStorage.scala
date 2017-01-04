@@ -74,7 +74,7 @@ class MVStoreStateStorage(val db: MVStore) extends StateStorageI {
     transactionsMap.put(tx.id, tx.bytes)
   }
 
-  override def removeTx(id: Array[Byte]): Unit = {
+  override def removeTransaction(id: Array[Byte]): Unit = {
     includedTx.remove(id)
     transactionsMap.remove(id)
   }

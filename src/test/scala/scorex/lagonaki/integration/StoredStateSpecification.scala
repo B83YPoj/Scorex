@@ -160,10 +160,6 @@ with TransactionTestingCommons with PrivateMethodTester with OptionValues {
 
     val block = new BlockMock(Seq(tx1, tx2))
     state.processBlock(block)
-
-    val result = state.lastAccountPaymentTransaction(acc)
-    result.isDefined shouldBe true
-    result.get shouldBe tx2
   }
 
   test("last transaction of account few blocks behind") {
