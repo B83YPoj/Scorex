@@ -29,7 +29,7 @@ class LagonakiTestSuite extends Sequential(
 
   //integration tests - slow!
   , new ValidChainGenerationSpecification
-  , StoredState.fromDBSpecification
+  , new StoredStateSpecification
 
 ) with BeforeAndAfterAll {
 

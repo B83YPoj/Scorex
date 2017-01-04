@@ -186,7 +186,6 @@ class StoredState(minimalStorage: StateStorageI,
         require(requiredHeight >= 0, s"Height should not be negative, $requiredHeight given")
 
         def loop(hh: Int, min: Long = Long.MaxValue): Long = {
-          //TODO optimization?
           val rowOpt = minimalStorage.getAccountChanges(key, hh)
           require(rowOpt.isDefined, s"accountChanges($key).get($hh) is null. lastStates.get(address)=$h")
           val row = rowOpt.get
@@ -201,7 +200,6 @@ class StoredState(minimalStorage: StateStorageI,
     }
   }
 
-  def totalBalance: Long = minimalStorage.lastStatesKeys.map(address => balanceByKey(address)).sum
 
   private val DefaultLimit = 50
 
@@ -235,7 +233,8 @@ class StoredState(minimalStorage: StateStorageI,
         case _ => result
       }
 
-    }.values.flatten.toList.sortWith(_.timestamp > _.timestamp).take(limit)
+      //TODO unique by id?
+    }.values.flatten.groupBy(_.id).map(_._2.head).toList.sortWith(_.timestamp > _.timestamp).take(limit)
   }
 
   def lastAccountPaymentTransaction(account: Account): Option[PaymentTransaction] = {
@@ -400,6 +399,9 @@ class StoredState(minimalStorage: StateStorageI,
   }
 
   //for debugging purposes only
+  def totalBalance: Long = minimalStorage.lastStatesKeys.map(address => balanceByKey(address)).sum
+
+  //for debugging purposes only
   def toJson(heightOpt: Option[Int] = None): JsObject = {
     val ls = minimalStorage.lastStatesKeys.map(add => add -> balanceByKey(add, heightOpt))
       .filter(b => b._2 != 0).sortBy(_._1)
@@ -409,6 +411,7 @@ class StoredState(minimalStorage: StateStorageI,
   //for debugging purposes only
   override def toString: String = toJson().toString()
 
+  //for debugging purposes only
   def hash: Int = {
     (BigInt(FastCryptographicHash(toString.getBytes)) % Int.MaxValue).toInt
   }

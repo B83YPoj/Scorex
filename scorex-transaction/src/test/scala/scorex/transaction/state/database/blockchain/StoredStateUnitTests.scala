@@ -289,7 +289,6 @@ class StoredStateUnitTests extends PropSpec with PropertyChecks with GeneratorDr
       //issue asset
       val newBalances = state.calcNewBalances(Seq(issueTx), Map(), allowTemporaryNegative = true)
       state.applyChanges(newBalances)
-      println(state.accountTransactions(issueTx.sender).filter(_.isInstanceOf[IssueTransaction]))
       state.accountTransactions(issueTx.sender).count(_.isInstanceOf[IssueTransaction]) shouldBe 1
     }
   }
