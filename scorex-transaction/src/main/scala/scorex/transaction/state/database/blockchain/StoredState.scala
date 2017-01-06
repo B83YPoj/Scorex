@@ -349,23 +349,23 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
       case tx: PaymentTransaction =>
         transaction.timestamp < settings.allowInvalidPaymentTransactionsByTimestamp ||
           (transaction.timestamp >= settings.allowInvalidPaymentTransactionsByTimestamp && isTimestampCorrect(tx))
-      case tx: TransferTransaction =>
-        included(tx.id, None).isEmpty
-      case tx: IssueTransaction =>
-        included(tx.id, None).isEmpty
-      case tx: ReissueTransaction =>
-        included(tx.id, None).isEmpty
-      case tx: BurnTransaction =>
-        included(tx.id, None).isEmpty && tx.timestamp > settings.allowBurnTransactionAfterTimestamp
-      case tx: OrderMatch =>
-        included(tx.id, None).isEmpty
       case gtx: GenesisTransaction =>
         height == 0
-      case otx: Any =>
-        log.error(s"Wrong kind of tx: $otx")
-        false
+      case tx: Transaction =>
+        included(tx.id, None).isEmpty
     }
-    extensionValidated && mainStateValidated
+    isActivated(transaction) && extensionValidated && mainStateValidated
+  }
+
+  private def isActivated(tx: Transaction): Boolean = tx match {
+    case tx: PaymentTransaction => true
+    case gtx: GenesisTransaction => true
+    case tx: TransferTransaction => true
+    case tx: IssueTransaction => true
+    case tx: ReissueTransaction => true
+    case tx: BurnTransaction => tx.timestamp > settings.allowBurnTransactionAfterTimestamp
+    case tx: OrderMatch => true
+    case _ => false
   }
 
   private def isTimestampCorrect(tx: PaymentTransaction): Boolean = {
