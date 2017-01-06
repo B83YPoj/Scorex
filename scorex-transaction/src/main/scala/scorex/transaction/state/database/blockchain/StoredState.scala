@@ -416,12 +416,12 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
 
 object StoredState {
   def fromDB(mvStore: MVStore, settings: WavesHardForkParameters): StoredState = {
-    val storage = new MVStoreStateStorage with MVStoreOrderMatchStorage {
+    val storage = new MVStoreStateStorage with MVStoreOrderMatchStorage with MVStoreAssetsExtendedStateStorage {
       override val db: MVStore = mvStore
       if (db.getStoreVersion > 0) db.rollback()
     }
     val orderMatchExtension = new OrderMatchStoredState(storage)
-    val extendedState = new AssetsExtendedState(mvStore)
+    val extendedState = new AssetsExtendedState(storage)
     new StoredState(storage, extendedState, Seq(orderMatchExtension, extendedState), settings)
   }
 
