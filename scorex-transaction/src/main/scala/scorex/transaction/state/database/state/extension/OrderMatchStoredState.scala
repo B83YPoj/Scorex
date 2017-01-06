@@ -73,7 +73,7 @@ class OrderMatchStoredState(storage: StateStorageI with OrderMatchStorageI) exte
     findPrevOrderMatchTxs(om.buyOrder) ++ findPrevOrderMatchTxs(om.sellOrder)
   }
 
-  private def findPrevOrderMatchTxs(order: Order): Set[OrderMatch] = {
+  def findPrevOrderMatchTxs(order: Order): Set[OrderMatch] = {
     val orderDay = calcStartDay(order.maxTimestamp)
     if (storage.containsSavedDays(orderDay)) {
       parseTxSeq(storage.getOrderMatchTxByDay(calcStartDay(order.maxTimestamp), Base58.encode(order.id))

@@ -17,8 +17,8 @@ import scorex.utils.{NTP, ScorexLogging}
 
 import scala.collection.SortedMap
 import scala.concurrent.duration._
+import scala.util.Try
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
 
 
 /**
@@ -28,7 +28,7 @@ import scala.util.{Failure, Success, Try}
   */
 class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
                   assetsExtension: AssetsExtendedState,
-                  extensions: Seq[StateExtension],
+                  val extensions: Seq[StateExtension],
                   settings: WavesHardForkParameters) extends LagonakiState with ScorexLogging {
 
   override def included(id: Array[Byte], heightOpt: Option[Int]): Option[Int] = storage.included(id, heightOpt)
