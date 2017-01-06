@@ -1,18 +1,29 @@
 package scorex.transaction.state.database.blockchain
 
 import scorex.crypto.encode.Base58
+import scorex.transaction.Transaction
 import scorex.transaction.assets.exchange.{Order, OrderMatch}
 
-trait OrderMatchStoredState {
-  protected val storage: StateStorageI with OrderMatchStorageI
+class OrderMatchStoredState(storage: StateStorageI with OrderMatchStorageI) extends StateExtension {
+
+
+  override def isValid(tx: Transaction): Boolean = tx match {
+    case om: OrderMatch => isOrderMatchValid(om)
+    case _ => true
+  }
+
+  override def process(tx: Transaction, blockTs: Long): Unit = tx match {
+    case om: OrderMatch => putOrderMatch(om, blockTs)
+    case _ =>
+  }
 
   val MaxLiveDays = (Order.MaxLiveTime / 24L * 60L * 60L * 1000L).toInt
 
-  def isOrderMatchValid(om: OrderMatch): Boolean = {
+  private def isOrderMatchValid(om: OrderMatch): Boolean = {
     om.isValid(findPrevOrderMatchTxs(om))
   }
 
-  def putOrderMatch(om: OrderMatch, blockTs: Long): Unit = {
+  private def putOrderMatch(om: OrderMatch, blockTs: Long): Unit = {
     def isSaveNeeded(order: Order): Boolean = {
       order.maxTimestamp >= blockTs
     }

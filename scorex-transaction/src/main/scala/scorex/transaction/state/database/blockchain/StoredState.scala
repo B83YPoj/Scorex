@@ -26,8 +26,8 @@ import scala.util.{Failure, Success, Try}
   */
 class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
                   assetsExtension: AssetsExtendedState,
-                  settings: WavesHardForkParameters) extends LagonakiState with ScorexLogging
-  with OrderMatchStoredState {
+                  extensions: Seq[StateExtension],
+                  settings: WavesHardForkParameters) extends LagonakiState with ScorexLogging {
 
   override def included(id: Array[Byte], heightOpt: Option[Int]): Option[Int] = storage.included(id, heightOpt)
 
@@ -248,7 +248,9 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
       storage.putAccountChanges(ch._1.key, h, change)
       storage.putLastStates(ch._1.key, h)
       ch._2._2.foreach {
-        case tx: Transaction => storage.putTransaction(tx, h)
+        case tx: Transaction =>
+          storage.putTransaction(tx, h)
+          extensions.foreach(_.process(tx, blockTs))
         case _ =>
       }
 
@@ -257,8 +259,6 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
           assetsExtension.addAsset(tx.assetId, h, tx.id, tx.quantity, tx.reissuable)
         case tx: BurnTransaction =>
           assetsExtension.burnAsset(tx.assetId, h, tx.id, -tx.amount)
-        case om: OrderMatch =>
-          putOrderMatch(om, blockTs)
         case _ =>
       }
       storage.updateAccountAssets(ch._1.account.address, ch._1.assetId)
@@ -350,31 +350,35 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
     }
   }
 
-  private[blockchain] def isValid(transaction: Transaction, height: Int): Boolean = transaction match {
-    case tx: PaymentTransaction =>
-      transaction.timestamp < settings.allowInvalidPaymentTransactionsByTimestamp ||
-        (transaction.timestamp >= settings.allowInvalidPaymentTransactionsByTimestamp && isTimestampCorrect(tx))
-    case tx: TransferTransaction =>
-      included(tx.id, None).isEmpty
-    case tx: IssueTransaction =>
-      included(tx.id, None).isEmpty
-    case tx: ReissueTransaction =>
-      val reissueValid: Boolean = {
-        val sameSender = isIssuerAddress(tx.assetId, tx.sender.address)
-        val reissuable = assetsExtension.isReissuable(tx.assetId)
-        sameSender && reissuable
-      }
-      reissueValid && included(tx.id, None).isEmpty
-    case tx: BurnTransaction =>
-      tx.timestamp > settings.allowBurnTransactionAfterTimestamp &&
-        isIssuerAddress(tx.assetId, tx.sender.address) && included(tx.id, None).isEmpty
-    case tx: OrderMatch =>
-      isOrderMatchValid(tx) && included(tx.id, None).isEmpty
-    case gtx: GenesisTransaction =>
-      height == 0
-    case otx: Any =>
-      log.error(s"Wrong kind of tx: $otx")
-      false
+  private[blockchain] def isValid(transaction: Transaction, height: Int): Boolean = {
+    val extensionValidated: Boolean = extensions.forall(_.isValid(transaction))
+    val mainStateValidated: Boolean = transaction match {
+      case tx: PaymentTransaction =>
+        transaction.timestamp < settings.allowInvalidPaymentTransactionsByTimestamp ||
+          (transaction.timestamp >= settings.allowInvalidPaymentTransactionsByTimestamp && isTimestampCorrect(tx))
+      case tx: TransferTransaction =>
+        included(tx.id, None).isEmpty
+      case tx: IssueTransaction =>
+        included(tx.id, None).isEmpty
+      case tx: ReissueTransaction =>
+        val reissueValid: Boolean = {
+          val sameSender = isIssuerAddress(tx.assetId, tx.sender.address)
+          val reissuable = assetsExtension.isReissuable(tx.assetId)
+          sameSender && reissuable
+        }
+        reissueValid && included(tx.id, None).isEmpty
+      case tx: BurnTransaction =>
+        tx.timestamp > settings.allowBurnTransactionAfterTimestamp &&
+          isIssuerAddress(tx.assetId, tx.sender.address) && included(tx.id, None).isEmpty
+      case tx: OrderMatch =>
+        included(tx.id, None).isEmpty
+      case gtx: GenesisTransaction =>
+        height == 0
+      case otx: Any =>
+        log.error(s"Wrong kind of tx: $otx")
+        false
+    }
+    extensionValidated && mainStateValidated
   }
 
   private def isIssuerAddress(assetId: Array[Byte], address: String): Boolean = {
@@ -420,12 +424,13 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
 }
 
 object StoredState {
-  def fromDB(storage: MVStore, settings: WavesHardForkParameters): StoredState = {
-    val min = new MVStoreStateStorage with MVStoreOrderMatchStorage {
-      override val db: MVStore = storage
+  def fromDB(mvStore: MVStore, settings: WavesHardForkParameters): StoredState = {
+    val storage = new MVStoreStateStorage with MVStoreOrderMatchStorage {
+      override val db: MVStore = mvStore
       if (db.getStoreVersion > 0) db.rollback()
     }
-    new StoredState(min, new AssetsExtendedState(storage), settings)
+    val orderMatchExtension = new OrderMatchStoredState(storage)
+    new StoredState(storage, new AssetsExtendedState(mvStore), Seq(orderMatchExtension), settings)
   }
 
 }
