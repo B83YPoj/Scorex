@@ -2,17 +2,29 @@ package scorex.transaction.state.database.blockchain
 
 import scorex.crypto.encode.Base58
 import scorex.transaction._
-import scorex.transaction.assets.{AssetIssuance, BurnTransaction}
+import scorex.transaction.assets.{AssetIssuance, BurnTransaction, IssueTransaction, ReissueTransaction}
 import scorex.transaction.state.database.state.extension.StateExtension
-import scorex.transaction.state.database.state.storage.AssetsExtendedStateStorageI
+import scorex.transaction.state.database.state.storage.{AssetsExtendedStateStorageI, StateStorageI}
 import scorex.utils.ScorexLogging
 
+import scala.util.{Failure, Success}
+
 //TODO move to state.extension package
-class AssetsExtendedState(storage: AssetsExtendedStateStorageI) extends ScorexLogging with StateExtension {
+class AssetsExtendedState(storage: StateStorageI with AssetsExtendedStateStorageI) extends ScorexLogging
+  with StateExtension {
 
-
-  //move some validation here
-  override def isValid(tx: Transaction): Boolean = true
+  override def isValid(tx: Transaction): Boolean = tx match {
+    case tx: ReissueTransaction =>
+      val reissueValid: Boolean = {
+        val sameSender = isIssuerAddress(tx.assetId, tx.sender.address)
+        val reissuable = isReissuable(tx.assetId)
+        sameSender && reissuable
+      }
+      reissueValid
+    case tx: BurnTransaction =>
+      isIssuerAddress(tx.assetId, tx.sender.address)
+    case _ => true
+  }
 
   override def process(tx: Transaction, blockTs: Long, height: Int): Unit = tx match {
     case tx: AssetIssuance =>
@@ -21,6 +33,18 @@ class AssetsExtendedState(storage: AssetsExtendedStateStorageI) extends ScorexLo
       burnAsset(tx.assetId, height, tx.id, -tx.amount)
     case _ =>
   }
+
+  private def isIssuerAddress(assetId: Array[Byte], address: String): Boolean = {
+    storage.getTransactionBytes(assetId).exists(b =>
+      IssueTransaction.parseBytes(b) match {
+        case Success(issue) =>
+          issue.sender.address == address
+        case Failure(f) =>
+          log.debug(s"Can't deserialise issue tx", f)
+          false
+      })
+  }
+
 
   private[blockchain] def addAsset(assetId: AssetId, height: Int, transactionId: Array[Byte], quantity: Long, reissuable: Boolean): Unit = {
     val asset = Base58.encode(assetId)

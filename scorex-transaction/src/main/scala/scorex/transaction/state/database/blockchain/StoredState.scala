@@ -354,15 +354,9 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
       case tx: IssueTransaction =>
         included(tx.id, None).isEmpty
       case tx: ReissueTransaction =>
-        val reissueValid: Boolean = {
-          val sameSender = isIssuerAddress(tx.assetId, tx.sender.address)
-          val reissuable = assetsExtension.isReissuable(tx.assetId)
-          sameSender && reissuable
-        }
-        reissueValid && included(tx.id, None).isEmpty
+        included(tx.id, None).isEmpty
       case tx: BurnTransaction =>
-        tx.timestamp > settings.allowBurnTransactionAfterTimestamp &&
-          isIssuerAddress(tx.assetId, tx.sender.address) && included(tx.id, None).isEmpty
+        included(tx.id, None).isEmpty && tx.timestamp > settings.allowBurnTransactionAfterTimestamp
       case tx: OrderMatch =>
         included(tx.id, None).isEmpty
       case gtx: GenesisTransaction =>
@@ -372,17 +366,6 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
         false
     }
     extensionValidated && mainStateValidated
-  }
-
-  private def isIssuerAddress(assetId: Array[Byte], address: String): Boolean = {
-    storage.getTransactionBytes(assetId).exists(b =>
-      IssueTransaction.parseBytes(b) match {
-        case Success(issue) =>
-          issue.sender.address == address
-        case Failure(f) =>
-          log.debug(s"Can't deserialise issue tx", f)
-          false
-      })
   }
 
   private def isTimestampCorrect(tx: PaymentTransaction): Boolean = {
