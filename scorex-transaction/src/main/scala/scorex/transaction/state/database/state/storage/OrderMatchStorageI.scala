@@ -1,4 +1,4 @@
-package scorex.transaction.state.database.blockchain
+package scorex.transaction.state.database.state.storage
 
 trait OrderMatchStorageI {
   def putSavedDays(day: Long): Unit

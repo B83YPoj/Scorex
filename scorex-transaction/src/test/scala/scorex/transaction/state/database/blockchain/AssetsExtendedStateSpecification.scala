@@ -5,6 +5,7 @@ import org.h2.mvstore.MVStore
 import org.scalatest.prop.{GeneratorDrivenPropertyChecks, PropertyChecks}
 import org.scalatest.{Assertions, Matchers, PropSpec}
 import scorex.transaction.TransactionGen
+import scorex.transaction.state.database.state.storage.MVStoreAssetsExtendedStateStorage
 
 class AssetsExtendedStateSpecification extends PropSpec with PropertyChecks with GeneratorDrivenPropertyChecks
   with Matchers with TransactionGen with Assertions {

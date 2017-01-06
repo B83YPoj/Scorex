@@ -11,6 +11,8 @@ import scorex.transaction._
 import scorex.transaction.assets._
 import scorex.transaction.assets.exchange.OrderMatch
 import scorex.transaction.state.database.state._
+import scorex.transaction.state.database.state.extension.{OrderMatchStoredState, StateExtension}
+import scorex.transaction.state.database.state.storage._
 import scorex.utils.{NTP, ScorexLogging}
 
 import scala.collection.SortedMap

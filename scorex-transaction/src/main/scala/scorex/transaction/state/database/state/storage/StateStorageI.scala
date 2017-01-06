@@ -1,4 +1,4 @@
-package scorex.transaction.state.database.blockchain
+package scorex.transaction.state.database.state.storage
 
 import scorex.transaction._
 import scorex.transaction.state.database.state._

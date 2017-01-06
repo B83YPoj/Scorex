@@ -3,8 +3,11 @@ package scorex.transaction.state.database.blockchain
 import scorex.crypto.encode.Base58
 import scorex.transaction._
 import scorex.transaction.assets.{AssetIssuance, BurnTransaction}
+import scorex.transaction.state.database.state.extension.StateExtension
+import scorex.transaction.state.database.state.storage.AssetsExtendedStateStorageI
 import scorex.utils.ScorexLogging
 
+//TODO move to state.extension package
 class AssetsExtendedState(storage: AssetsExtendedStateStorageI) extends ScorexLogging with StateExtension {
 
 
