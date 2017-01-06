@@ -12,7 +12,7 @@ class OrderMatchStoredState(storage: StateStorageI with OrderMatchStorageI) exte
     case _ => true
   }
 
-  override def process(tx: Transaction, blockTs: Long): Unit = tx match {
+  override def process(tx: Transaction, blockTs: Long, height: Int): Unit = tx match {
     case om: OrderMatch => putOrderMatch(om, blockTs)
     case _ =>
   }

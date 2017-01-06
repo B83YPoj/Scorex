@@ -5,6 +5,6 @@ import scorex.transaction.Transaction
 trait StateExtension {
   def isValid(tx: Transaction): Boolean
 
-  def process(tx: Transaction, blockTs: Long): Unit
+  def process(tx: Transaction, blockTs: Long, height: Int): Unit
 
 }

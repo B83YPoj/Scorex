@@ -43,7 +43,8 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
         val assetId = triedAssetId.get
         val maybeIssueTransaction = getIssueTransaction(assetId)
         if (maybeIssueTransaction.isDefined)
-          result.updated(assetId, (balance, isAssetReissuable(assetId), totalAssetQuantity(assetId), maybeIssueTransaction.get))
+          result.updated(assetId, (balance, assetsExtension.isReissuable(assetId), totalAssetQuantity(assetId),
+            maybeIssueTransaction.get))
         else result
       } else result
     }
@@ -236,8 +237,6 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
     newBalances
   }
 
-  private def isAssetReissuable(assetId: AssetId): Boolean = assetsExtension.isReissuable(assetId)
-
   private[blockchain] def totalAssetQuantity(assetId: AssetId): Long = assetsExtension.getAssetQuantity(assetId)
 
   private[blockchain] def applyChanges(changes: Map[AssetAcc, (AccState, Reason)], blockTs: Long = NTP.correctedTime()): Unit = synchronized {
@@ -250,15 +249,7 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
       ch._2._2.foreach {
         case tx: Transaction =>
           storage.putTransaction(tx, h)
-          extensions.foreach(_.process(tx, blockTs))
-        case _ =>
-      }
-
-      ch._2._2.foreach {
-        case tx: AssetIssuance =>
-          assetsExtension.addAsset(tx.assetId, h, tx.id, tx.quantity, tx.reissuable)
-        case tx: BurnTransaction =>
-          assetsExtension.burnAsset(tx.assetId, h, tx.id, -tx.amount)
+          extensions.foreach(_.process(tx, blockTs, h))
         case _ =>
       }
       storage.updateAccountAssets(ch._1.account.address, ch._1.assetId)
@@ -430,7 +421,8 @@ object StoredState {
       if (db.getStoreVersion > 0) db.rollback()
     }
     val orderMatchExtension = new OrderMatchStoredState(storage)
-    new StoredState(storage, new AssetsExtendedState(mvStore), Seq(orderMatchExtension), settings)
+    val extendedState = new AssetsExtendedState(mvStore)
+    new StoredState(storage, extendedState, Seq(orderMatchExtension, extendedState), settings)
   }
 
 }

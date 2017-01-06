@@ -3,9 +3,10 @@ package scorex.transaction.state.database.blockchain
 import org.h2.mvstore.{MVMap, MVStore}
 import scorex.crypto.encode.Base58
 import scorex.transaction._
+import scorex.transaction.assets.{AssetIssuance, BurnTransaction}
 import scorex.utils.{LogMVMapBuilder, ScorexLogging}
 
-class AssetsExtendedState(db: MVStore) extends ScorexLogging {
+class AssetsExtendedState(db: MVStore) extends ScorexLogging with StateExtension {
 
   private val heightsTable: MVMap[String, Set[Int]] = db.openMap(AssetsExtendedState.HeightsTableName,
     new LogMVMapBuilder[String, Set[Int]])
@@ -19,7 +20,19 @@ class AssetsExtendedState(db: MVStore) extends ScorexLogging {
   private val reissuableTable: MVMap[String, Boolean] = db.openMap(AssetsExtendedState.ReissuableTableName,
     new LogMVMapBuilder[String, Boolean])
 
-  def addAsset(assetId: AssetId, height: Int, transactionId: Array[Byte], quantity: Long, reissuable: Boolean): Unit = {
+
+  //move some validation here
+  override def isValid(tx: Transaction): Boolean = true
+
+  override def process(tx: Transaction, blockTs: Long, height: Int): Unit = tx match {
+    case tx: AssetIssuance =>
+      addAsset(tx.assetId, height, tx.id, tx.quantity, tx.reissuable)
+    case tx: BurnTransaction =>
+      burnAsset(tx.assetId, height, tx.id, -tx.amount)
+    case _ =>
+  }
+
+  private[blockchain] def addAsset(assetId: AssetId, height: Int, transactionId: Array[Byte], quantity: Long, reissuable: Boolean): Unit = {
     val asset = Base58.encode(assetId)
     val transaction = Base58.encode(transactionId)
     val assetAtHeight = s"$asset@$height"
@@ -31,7 +44,7 @@ class AssetsExtendedState(db: MVStore) extends ScorexLogging {
     setReissuable(assetAtTransaction, reissuable)
   }
 
-  def burnAsset(assetId: AssetId, height: Int, transactionId: Array[Byte], quantity: Long): Unit = {
+  private[blockchain] def burnAsset(assetId: AssetId, height: Int, transactionId: Array[Byte], quantity: Long): Unit = {
     require(quantity <= 0, "Quantity of burned asset should be negative")
 
     val asset = Base58.encode(assetId)
