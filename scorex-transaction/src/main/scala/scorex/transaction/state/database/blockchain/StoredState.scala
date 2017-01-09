@@ -9,9 +9,8 @@ import scorex.crypto.hash.FastCryptographicHash
 import scorex.settings.WavesHardForkParameters
 import scorex.transaction._
 import scorex.transaction.assets._
-import scorex.transaction.assets.exchange.OrderMatch
 import scorex.transaction.state.database.state._
-import scorex.transaction.state.database.state.extension.{IncludedValidator, OrderMatchStoredState, StateExtension}
+import scorex.transaction.state.database.state.extension.{ActivatedValidator, IncludedValidator, OrderMatchStoredState, StateExtension}
 import scorex.transaction.state.database.state.storage._
 import scorex.utils.{NTP, ScorexLogging}
 
@@ -353,18 +352,7 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
         height == 0
       case _ => true
     }
-    isActivated(transaction) && extensionValidated && restValidation
-  }
-
-  private def isActivated(tx: Transaction): Boolean = tx match {
-    case tx: PaymentTransaction => true
-    case gtx: GenesisTransaction => true
-    case tx: TransferTransaction => true
-    case tx: IssueTransaction => true
-    case tx: ReissueTransaction => true
-    case tx: BurnTransaction => tx.timestamp > settings.allowBurnTransactionAfterTimestamp
-    case tx: OrderMatch => true
-    case _ => false
+    extensionValidated && restValidation
   }
 
   private def isTimestampCorrect(tx: PaymentTransaction): Boolean = {
@@ -404,10 +392,14 @@ object StoredState {
       override val db: MVStore = mvStore
       if (db.getStoreVersion > 0) db.rollback()
     }
-    val orderMatchExtension = new OrderMatchStoredState(storage)
     val extendedState = new AssetsExtendedState(storage)
-    val includedValidator = new IncludedValidator(storage, settings)
-    new StoredState(storage, extendedState, Seq(orderMatchExtension, extendedState, includedValidator), settings)
+    val validators = Seq(
+      extendedState,
+      new OrderMatchStoredState(storage),
+      new IncludedValidator(storage, settings),
+      new ActivatedValidator(settings)
+    )
+    new StoredState(storage, extendedState, validators, settings)
   }
 
 }
