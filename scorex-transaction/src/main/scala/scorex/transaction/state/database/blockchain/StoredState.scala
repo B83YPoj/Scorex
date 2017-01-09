@@ -11,7 +11,7 @@ import scorex.transaction._
 import scorex.transaction.assets._
 import scorex.transaction.assets.exchange.OrderMatch
 import scorex.transaction.state.database.state._
-import scorex.transaction.state.database.state.extension.{OrderMatchStoredState, StateExtension}
+import scorex.transaction.state.database.state.extension.{IncludedValidator, OrderMatchStoredState, StateExtension}
 import scorex.transaction.state.database.state.storage._
 import scorex.utils.{NTP, ScorexLogging}
 
@@ -28,7 +28,7 @@ import scala.util.control.NonFatal
   */
 class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
                   assetsExtension: AssetsExtendedState,
-                  val extensions: Seq[StateExtension],
+                  val validators: Seq[StateExtension],
                   settings: WavesHardForkParameters) extends LagonakiState with ScorexLogging {
 
   override def included(id: Array[Byte], heightOpt: Option[Int]): Option[Int] = storage.included(id, heightOpt)
@@ -250,8 +250,7 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
       storage.putLastStates(ch._1.key, h)
       ch._2._2.foreach {
         case tx: Transaction =>
-          storage.putTransaction(tx, h)
-          extensions.foreach(_.process(tx, blockTs, h))
+          validators.foreach(_.process(tx, blockTs, h))
         case _ =>
       }
       storage.updateAccountAssets(ch._1.account.address, ch._1.assetId)
@@ -344,17 +343,17 @@ class StoredState(protected val storage: StateStorageI with OrderMatchStorageI,
   }
 
   private[blockchain] def isValid(transaction: Transaction, height: Int): Boolean = {
-    val extensionValidated: Boolean = extensions.forall(_.isValid(transaction))
-    val mainStateValidated: Boolean = transaction match {
+    val extensionValidated: Boolean = validators.forall(_.isValid(transaction))
+    //TODO move to extensions
+    val restValidation: Boolean = transaction match {
       case tx: PaymentTransaction =>
         transaction.timestamp < settings.allowInvalidPaymentTransactionsByTimestamp ||
           (transaction.timestamp >= settings.allowInvalidPaymentTransactionsByTimestamp && isTimestampCorrect(tx))
       case gtx: GenesisTransaction =>
         height == 0
-      case tx: Transaction =>
-        included(tx.id, None).isEmpty
+      case _ => true
     }
-    isActivated(transaction) && extensionValidated && mainStateValidated
+    isActivated(transaction) && extensionValidated && restValidation
   }
 
   private def isActivated(tx: Transaction): Boolean = tx match {
@@ -407,7 +406,8 @@ object StoredState {
     }
     val orderMatchExtension = new OrderMatchStoredState(storage)
     val extendedState = new AssetsExtendedState(storage)
-    new StoredState(storage, extendedState, Seq(orderMatchExtension, extendedState), settings)
+    val includedValidator = new IncludedValidator(storage, settings)
+    new StoredState(storage, extendedState, Seq(orderMatchExtension, extendedState, includedValidator), settings)
   }
 
 }
